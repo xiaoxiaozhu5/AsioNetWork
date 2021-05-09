@@ -20,12 +20,18 @@ public:
 	
 	bool Connect(const std::string& host, const uint16_t& port)
 	{
-		connection_ = std::make_shared<connection<T>>();
-
 		asio::ip::tcp::resolver resolver(io_context_);
-		auto ep = resolver.resolve(host, std::to_string(port));
-		connection_->Connect(ep);
+		asio::ip::tcp::resolver::results_type ep = resolver.resolve(host, std::to_string(port));
+
+		connection_ = std::make_unique<connection<T>>(
+			connection<T>::owner::client, 
+			io_context_,
+			asio::ip::tcp::socket(io_context_),
+			queue_in_);
+
+		connection_->ConnectToServer(ep);
 		thread_ = std::thread([this](){io_context_.run();});
+		return true;
 	}
 
 	void Disconnect()
@@ -54,6 +60,11 @@ public:
 	tsqueue<owned_message<T>>& Incoming()
 	{
 		return queue_in_;
+	}
+
+	bool Send(message<T>& msg)
+	{
+		return connection_->Send(msg);
 	}
 
 protected:

@@ -16,7 +16,7 @@ struct message
 
 	size_t size() const
 	{
-		return sizeof(message_header<T>) + body.size();
+		return body.size();
 	}
 
 	friend std::ostream& operator<< (std::ostream& os, const message<T>& msg)

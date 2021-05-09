@@ -68,6 +68,6 @@ public:
 	}
 
 protected:
-	std::mutex mtx_;
+	mutable std::mutex mtx_;
 	std::deque<T> queue_;
 };
