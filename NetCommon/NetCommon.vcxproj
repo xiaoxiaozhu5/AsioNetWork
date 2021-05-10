@@ -25,6 +25,7 @@
     <ClInclude Include="net_message.h" />
     <ClInclude Include="net_server.h" />
     <ClInclude Include="net_tsqueue.h" />
+    <ClInclude Include="net_validation.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -25,12 +25,18 @@ public:
 	{
 		LockType lock(mtx_);
 		queue_.emplace_back(std::move(item));
+
+		LockType cv_lock(cv_mtx_);
+		cv_.notify_one();
 	}
 
 	void push_front(const T& item)
 	{
 		LockType lock(mtx_);
 		queue_.emplace_front(std::move(item));
+
+		LockType cv_lock(cv_mtx_);
+		cv_.notify_one();
 	}
 
 	bool empty() const
@@ -67,7 +73,18 @@ public:
 		return item;
 	}
 
+	void wait()
+	{
+		while(empty())
+		{
+			LockType lock(cv_mtx_);
+			cv_.wait(lock);
+		}
+	}
+
 protected:
 	mutable std::mutex mtx_;
 	std::deque<T> queue_;
+	std::mutex cv_mtx_;
+	std::condition_variable cv_;
 };

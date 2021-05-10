@@ -3,6 +3,7 @@
 #include "net_common.h"
 #include "net_message.h"
 #include "net_tsqueue.h"
+#include "net_validation.h"
 
 template <typename T>
 class connection : public std::enable_shared_from_this<connection<T>>
@@ -19,6 +20,9 @@ public:
 		queue_in_(in_message_queue)
 	{
 		type_ = type;	
+
+		tmp_validation_ = 0;
+		tmp_validation2_ = validate_.get_init();
 	}
 
 	virtual ~connection()
@@ -38,7 +42,9 @@ public:
 			if(socket_.is_open())
 			{
 				id_ = uid;
-				ReadHeader();
+				//ReadHeader();
+
+				WriteValidation();
 				return true;
 			}
 			return false;
@@ -57,7 +63,7 @@ public:
 				{
 					if(!ec)
 					{
-						ReadHeader();
+						ReadValidation();
 					}
 					else
 					{
@@ -111,6 +117,68 @@ protected:
 	uint32_t id_{0};
 
 private:
+	uint64_t tmp_validation_;
+	uint64_t tmp_validation2_;
+	validation validate_;
+
+	void ReadValidation()
+	{
+		asio::async_read(socket_, asio::buffer(&tmp_validation_, sizeof(uint64_t)),
+			[this](asio::error_code ec, std::size_t length)
+			{
+				if(!ec)
+				{
+					if(type_ == owner::server)
+					{
+						validate_.set_other(tmp_validation_);
+						if(!validate_.validate())
+						{
+							spdlog::error("validate error");
+							socket_.close();	
+						}
+						else
+						{
+							ReadHeader();	
+						}
+					}
+					else
+					{
+						tmp_validation2_ = validate_.hash_it(tmp_validation_);		
+						WriteValidation();
+					}
+				}
+				else
+				{
+					spdlog::error("[{}] recv validation failed:{}", id_, ec.message());
+					socket_.close();
+				}
+			});	
+	}
+
+	void WriteValidation()
+	{
+		asio::async_write(socket_, asio::buffer(&tmp_validation2_, sizeof(uint64_t)),
+			[this](asio::error_code ec, std::size_t length)
+			{
+				if(!ec)
+				{
+					if(type_ == owner::server)
+					{
+						ReadValidation();		
+					}
+					else
+					{
+						ReadHeader();	
+					}
+				}
+				else
+				{
+					spdlog::error("[{}] write validation failed:{}", id_, ec.message());
+					socket_.close();
+				}
+			});
+	}
+
 	void ReadHeader()
 	{
 		asio::async_read(socket_, asio::buffer(&tmp_message_.header, sizeof(message_header<T>)),

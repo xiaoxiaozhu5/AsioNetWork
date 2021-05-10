@@ -117,8 +117,10 @@ public:
 		}
 	}
 
-	void update(size_t max_messages = -1)
+	void update(size_t max_messages = -1, bool wait = false)
 	{
+		if(wait) message_queue_in_.wait();
+		
 		size_t message_cnt = 0;	
 		while(message_cnt < max_messages && !message_queue_in_.empty())
 		{
